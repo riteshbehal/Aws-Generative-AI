@@ -22,7 +22,7 @@ for message in st.session_state.chat_history:
 
 #6 Enter the details for chatbot input box 
      
-input_text = st.chat_input("Type Here") # **display a chat input box
+input_text = st.chat_input("Type Here") # *display a chat input box
 if input_text: 
     
     with st.chat_message("user"): 
