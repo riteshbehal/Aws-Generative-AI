@@ -4,7 +4,7 @@ import streamlit as st
 import chatbot_backend as demo
 
 # Title
-st.title("🤖 Bedrock Chatbot")
+st.title("🤖 Hi! This is Chatbot BOB")
 
 # Initialize memory
 if "memory" not in st.session_state:
