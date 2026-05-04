@@ -1,42 +1,56 @@
 import json
-#1 Import boto3 and create client connection with bedrock
 import boto3
-client_bedrock=boto3.client('bedrock-runtime')
-#print(boto3.__version__)
+
+client_bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
 
 def lambda_handler(event, context):
-#2 a. Store the input in a variable, b. print the event
-    input_prompt=event['prompt']
-    print(input_prompt)
-   
-#3. Create  Request Syntax - Get details from console & body should be json object - use   json.dumps for body
+    try:
+        print("EVENT:", event)
 
-    client_bedrockrequest=client_bedrock.invoke_model(
-       contentType='application/json',
-       accept='application/json',
-       modelId='cohere.command-light-text-v14',
-       body=json.dumps( {
-        "prompt": input_prompt,
-        "temperature": 0.9,
-        "p": 0.75,
-        "k": 0,
-        "max_tokens": 100}))
-    #print(client_bedrockrequest)    
+        # ✅ Handle BOTH formats
+        if 'body' in event:
+            body = json.loads(event['body'])
+            user_prompt = body.get('prompt', '')
+        else:
+            user_prompt = event.get('prompt', '')
 
-#4. Convert Streaming Body to Byte(.read method) and then Byte to String using json.loads#
+        if not user_prompt:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "Prompt is required"})
+            }
 
-    client_bedrock_byte=client_bedrockrequest['body'].read()
-    #print(client_bedrock_byte)
-    #print(type(client_bedrock_byte))
-#5 a. Print the event and type , b. Store the input in a variable
+        response = client_bedrock.invoke_model(
+            modelId='amazon.nova-pro-v1:0',
+            contentType='application/json',
+            accept='application/json',
+            body=json.dumps({
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"text": user_prompt}
+                        ]
+                    }
+                ],
+                "inferenceConfig": {
+                    "temperature": 0.7,
+                    "topP": 0.9,
+                    "maxTokens": 200
+                }
+            })
+        )
 
-    client_bedrock_string=json.loads(client_bedrock_byte)
-    #print(client_bedrock_string)
-#6. Update the 'return' by changing the 'body'
-    client_final_response=client_bedrock_string['generations'][0]['text']
-    print(client_final_response)
+        response_body = json.loads(response['body'].read())
+        output_text = response_body['output']['message']['content'][0]['text']
 
-    return {
-        'statusCode': 200,
-        'body': json.dumps(client_final_response)
-    }
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"response": output_text})
+        }
+
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": str(e)})
+        }
