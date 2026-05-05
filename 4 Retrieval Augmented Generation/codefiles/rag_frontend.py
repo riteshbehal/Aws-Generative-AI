@@ -12,10 +12,10 @@ if 'vector_index' not in st.session_state:
         st.session_state.vector_index = demo.hr_index() ### Your Index Function name from Backend File
 
 input_text = st.text_area("Input text", label_visibility="collapsed") 
-go_button = st.button("📌Learn GenAI with CloudFreeks", type="primary") ### Button Name
+go_button = st.button("Submit", type="primary") ### Button Name
 
 if go_button: 
     
-    with st.spinner("📢Anytime someone tells me that I can't do something, I want to do it more - Taylor Swift"): ### Spinner message
+    with st.spinner("Let's find the answer for you!"): ### Spinner message
         response_content = demo.hr_rag_response(index=st.session_state.vector_index, question=input_text) ### replace with RAG Function from backend file
         st.write(response_content) 
