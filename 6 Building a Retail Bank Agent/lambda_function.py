@@ -1,44 +1,67 @@
 import json
-#1 Import boto3 and create client connection with DynamoDB - Link to documentation - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/dynamodb/client/get_item.html
 import boto3
-client=boto3.client('dynamodb')
+
+client = boto3.client('dynamodb')
 
 def lambda_handler(event, context):
-#2 Print event value and store the event details in a variable 
-    print(f"This is the input from agent{event}")
-    account_id=event['parameters'][0]['value']
-#3 Create a request syntax to retrieve data from the DynamoDB Table using GET Item method - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/dynamodb/client/get_item.html
-    response = client.get_item(
-        TableName='customerAccountStatus',
-        Key={'AccountID':{'N': account_id}})
-#4 Store and print the response 
-    print(response)
-#5 Format the response as per the requirement of Bedrock Agent Action Group - https://docs.aws.amazon.com/bedrock/latest/userguide/agents-lambda.html
-    response_body = {
-        'application/json': {
-            'body': json.dumps(response)
-        }
-    }
-    
-    action_response = {
-        'actionGroup': event['actionGroup'],
-        'apiPath': event['apiPath'],
-        'httpMethod': event['httpMethod'],
-        'httpStatusCode': 200,
-        'responseBody': response_body
-    }
-    
-    session_attributes = event['sessionAttributes']
-    prompt_session_attributes = event['promptSessionAttributes']
-    
-    api_response = {
-        'messageVersion': '1.0', 
-        'response': action_response,
-        'sessionAttributes': session_attributes,
-        'promptSessionAttributes': prompt_session_attributes
-    }
-        
-    return api_response
 
-#6 Print the final response
-    # TODO implement
+    print("Event:", event)
+
+    # 🔹 Extract AccountId safely
+    account_id = None
+    for param in event.get('parameters', []):
+        if param.get('name') == 'AccountId':
+            account_id = param.get('value')
+
+    if account_id is None:
+        return build_response(event, 400, {"error": "Missing AccountId"})
+
+    # 🔹 Validate AccountId is numeric
+    try:
+        account_id = int(account_id)
+    except:
+        return build_response(event, 400, {"error": "AccountId must be a number"})
+
+    # 🔹 Fetch from DynamoDB
+    try:
+        response = client.get_item(
+            TableName='AccountStatus',
+            Key={'AccountId': {'N': str(account_id)}}
+        )
+    except Exception as e:
+        return build_response(event, 500, {"error": f"DynamoDB error: {str(e)}"})
+
+    print("DynamoDB response:", response)
+
+    item = response.get('Item')
+
+    if not item:
+        return build_response(event, 404, {"error": "Account not found"})
+
+    # 🔹 Safely extract values
+    account_data = {
+        "AccountId": int(item.get('AccountId', {}).get('N', 0)),
+        "AccountName": item.get('AccountName', {}).get('S', 'N/A'),
+        "AccountStatus": item.get('AccountStatus', {}).get('S', 'N/A'),
+        "Reason": item.get('Reason', {}).get('S', 'N/A')
+    }
+
+    return build_response(event, 200, account_data)
+
+
+# 🔹 Standard Bedrock response builder
+def build_response(event, status_code, body):
+    return {
+        "messageVersion": "1.0",
+        "response": {
+            "actionGroup": event.get("actionGroup") or "AccountStatusAction",
+            "apiPath": event.get("apiPath") or "/newBankAccountStatus",
+            "httpMethod": event.get("httpMethod") or "GET",
+            "httpStatusCode": status_code,
+            "responseBody": {
+                "application/json": body   # ⚠️ Do NOT use json.dumps
+            }
+        },
+        "sessionAttributes": event.get("sessionAttributes", {}),
+        "promptSessionAttributes": event.get("promptSessionAttributes", {})
+    }

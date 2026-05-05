@@ -1,40 +1,41 @@
----
 openapi: 3.0.0
 info:
-  title: Retail Banking - New account opening status for the customer
+  title: Account Status API
   version: 1.0.0
-  description: API for determining the status of new accounts opened based on AccountID and reason for pending status # Important - Prompt semantically matched to description
+  description: API to retrieve real-time account status using AccountId
+
 paths:
-  "/newBankAccountStatus":
+  /newBankAccountStatus:
     get:
-      summary: Get a list of all open new accounts and thier status
-      description: Get a list of all open new accounts and thier status
-      operationId: getAllOpenAccountStatus
+      operationId: getAccountStatus
+      summary: Get account status using AccountId
+      description: MUST be used to retrieve account status from database when user provides an AccountId
+
       parameters:
-      - name : AccountID
-        in: path
-        description: The account ID of the customer looking for status
-        required: true
-        schema:
-          type: int
+        - name: AccountId
+          in: query
+          required: true
+          description: Account ID of the customer
+          schema:
+            type: integer
+
       responses:
         '200':
-          description: Successful response containing the account status details
+          description: Successful response containing account details
           content:
             application/json:
               schema:
                 type: object
                 properties:
+                  AccountId:
+                    type: integer
+                    description: Unique account identifier
                   AccountName:
                     type: string
-                    description: The name of the customer corresponding to AccountID
-                  AccountID:
-                    type: int
-                    description: The account id of the customer  
+                    description: Name of the account holder
+                  AccountStatus:
+                    type: string
+                    description: Current status of the account
                   Reason:
                     type: string
-                    description: The reason for open status
-                  Status:
-                    type: string
-                    description: The status of the accountid provided
-
+                    description: Reason for the current status
